@@ -75,10 +75,12 @@ export function App() {
   return (
     <main>
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="Финансы — наверх">
-          <span className="brand-mark">Ф</span>
-          <span>Финансы</span>
-        </a>
+        <div className="brand-group">
+          <a className="academy-brand" href="https://academy-strateg.by" target="_blank" rel="noopener noreferrer" aria-label="Академия Стратег">
+            <img src="/strateg-logo.svg" width="1255" height="588" alt="Академия Стратег" />
+          </a>
+          <a className="product-brand" href="#top" aria-label="Финансы — наверх">Финансы</a>
+        </div>
         <span className="version">Первая функция · Кредиты</span>
       </header>
 
@@ -294,8 +296,11 @@ export function App() {
       </section>
 
       <footer>
-        <p>Финансы · личный инструмент Дмитрия</p>
-        <p>Расчёт носит информационный характер и не заменяет условия кредитного договора.</p>
+        <div>
+          <p>Финансы · личный инструмент Дмитрия</p>
+          <p className="footer-dev">Разработка: <a href="https://archi-landing-iota.vercel.app" target="_blank" rel="noopener noreferrer">Automation Studio Creative</a></p>
+        </div>
+        <p className="footer-note">Расчёт носит информационный характер и не заменяет условия кредитного договора.</p>
       </footer>
     </main>
   )
