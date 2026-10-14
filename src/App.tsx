@@ -152,6 +152,29 @@ export function App() {
             </div>
           </div>
 
+          <div className="savings-summary">
+            <div className="savings-primary">
+              <span>Экономия компании на процентах</span>
+              <strong>{formatMoney(result.interestSaved)}</strong>
+              <small>
+                за {result.schedule.length} {result.schedule.length === 1 ? 'год' : result.schedule.length < 5 ? 'года' : 'лет'} по сравнению с ежегодным возобновлением исходного кредита
+              </small>
+            </div>
+            <div className="savings-secondary">
+              <div>
+                <span>Меньше платёж к последнему году</span>
+                <strong>{formatMoney(result.peakMonthlyPaymentReduction)} <em>/ мес.</em></strong>
+              </div>
+              <div>
+                <span>Меньше выплат внешнему банку</span>
+                <strong>{formatMoney(result.totalBankPaymentReduction)}</strong>
+              </div>
+            </div>
+            <p className="savings-explainer">
+              Экономия на процентах — реальная экономическая выгода. Снижение выплат банку — высвобождённый денежный поток: часть тела кредита уже заменена капиталом собственника.
+            </p>
+          </div>
+
           <div className="independence">
             <div className="section-heading compact">
               <span>02</span>
@@ -193,7 +216,7 @@ export function App() {
 
       <section className="schedule-section">
         <div className="section-heading">
-          <span>03</span>
+              <span>03</span>
           <div>
             <h2>План по годам</h2>
             <p>Каждый год часть внешнего займа заменяется накопленными средствами</p>
@@ -207,6 +230,8 @@ export function App() {
                 <th>Период</th>
                 <th>Внешний долг в начале</th>
                 <th>Взнос собственника / мес.</th>
+                <th>Платёж банку / мес.</th>
+                <th>Экономия / мес.</th>
                 <th>Накоплено за год</th>
                 <th>Внешний долг в конце</th>
                 <th>Свой капитал</th>
@@ -218,6 +243,8 @@ export function App() {
                   <td data-label="Период"><strong>Год {row.year}</strong></td>
                   <td data-label="Долг в начале">{formatMoney(row.externalStart)}</td>
                   <td data-label="Взнос / мес.">{formatMoney(row.monthlyOwnerContribution)}</td>
+                  <td data-label="Платёж банку / мес.">{formatMoney(row.monthlyBankPayment)}</td>
+                  <td data-label="Экономия / мес." className="saving-cell">{formatMoney(row.savedPayment)}</td>
                   <td data-label="Накоплено за год">{formatMoney(row.annualOwnerContribution)}</td>
                   <td data-label="Долг в конце" className={row.externalEnd === 0 ? 'success-cell' : ''}>{row.externalEnd === 0 ? 'Погашен' : formatMoney(row.externalEnd)}</td>
                   <td data-label="Свой капитал">{formatMoney(row.ownerCapital)}</td>
@@ -261,6 +288,7 @@ export function App() {
             <p><strong>2.</strong> За год взносы накапливаются в «банке собственника» и при следующем обновлении кредита заменяют такую же часть внешнего капитала.</p>
             <p><strong>3.</strong> Указанная доля экономии по банковскому платежу добавляется к ежемесячному взносу следующего года.</p>
             <p><strong>4.</strong> Сумма сверх остатка внешнего долга считается стратегическим резервом.</p>
+            <p><strong>5.</strong> Экономия процентов сравнивается со сценарием, где компания каждый год заново берёт исходную сумму кредита на тех же условиях.</p>
           </div>
         )}
       </section>

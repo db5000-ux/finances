@@ -27,6 +27,8 @@ export interface CalculationResult {
   yearsToFreedom: number | null
   totalInterest: number
   interestSaved: number
+  totalBankPaymentReduction: number
+  peakMonthlyPaymentReduction: number
   finalReserve: number
   schedule: YearResult[]
 }
@@ -89,6 +91,14 @@ export function calculateFreedomPlan(input: CalculatorInput): CalculationResult 
   }
 
   const comparableInterest = baselineInterest * schedule.length
+  const totalBankPaymentReduction = schedule.reduce(
+    (sum, year) => sum + year.savedPayment * 12,
+    0,
+  )
+  const peakMonthlyPaymentReduction = schedule.reduce(
+    (maximum, year) => Math.max(maximum, year.savedPayment),
+    0,
+  )
 
   return {
     baselinePayment,
@@ -97,6 +107,8 @@ export function calculateFreedomPlan(input: CalculatorInput): CalculationResult 
     yearsToFreedom,
     totalInterest,
     interestSaved: Math.max(0, comparableInterest - totalInterest),
+    totalBankPaymentReduction,
+    peakMonthlyPaymentReduction,
     finalReserve: reserve,
     schedule,
   }
