@@ -40,15 +40,29 @@ export function annuityPayment(principal: number, annualRate: number, months: nu
   return principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -months))
 }
 
+export function remainingBalance(principal: number, annualRate: number, termMonths: number, elapsedMonths: number): number {
+  if (principal <= 0 || termMonths <= 0) return 0
+  const n = Math.min(elapsedMonths, termMonths)
+  const monthlyRate = annualRate / 100 / 12
+  if (monthlyRate === 0) return Math.max(0, principal - (principal / termMonths) * n)
+  const payment = annuityPayment(principal, annualRate, termMonths)
+  const grown = principal * Math.pow(1 + monthlyRate, n)
+  const paidDown = payment * (Math.pow(1 + monthlyRate, n) - 1) / monthlyRate
+  return Math.max(0, grown - paidDown)
+}
+
 export function calculateFreedomPlan(input: CalculatorInput): CalculationResult {
   const principal = Math.max(0, input.principal)
   const termMonths = Math.max(1, Math.round(input.termMonths))
   const maxYears = Math.max(1, Math.round(input.maxYears))
   const baseContribution = Math.max(0, input.monthlyOwnerContribution)
   const reinvestShare = Math.min(1, Math.max(0, input.reinvestSavingsPercent / 100))
-  const baselinePayment = annuityPayment(principal, Math.max(0, input.annualRate), termMonths)
-  const baselineTotal = baselinePayment * termMonths
-  const baselineInterest = baselineTotal - principal
+  const rate = Math.max(0, input.annualRate)
+  const baselinePayment = annuityPayment(principal, rate, termMonths)
+  const baselineYearMonths = Math.min(12, termMonths)
+  const baselineTotal = baselinePayment * baselineYearMonths
+  const baselinePrincipalPaid = principal - remainingBalance(principal, rate, termMonths, baselineYearMonths)
+  const baselineInterest = Math.max(0, baselineTotal - baselinePrincipalPaid)
 
   let external = principal
   let ownerCapital = 0
@@ -59,7 +73,9 @@ export function calculateFreedomPlan(input: CalculatorInput): CalculationResult 
 
   for (let year = 1; year <= maxYears; year += 1) {
     const externalStart = external
-    const payment = annuityPayment(externalStart, Math.max(0, input.annualRate), termMonths)
+    const payment = annuityPayment(externalStart, rate, termMonths)
+    const yearMonths = Math.min(12, termMonths)
+    const principalPaidThisYear = externalStart - remainingBalance(externalStart, rate, termMonths, yearMonths)
     const savedPayment = Math.max(0, baselinePayment - payment)
     const monthlyContribution = baseContribution + savedPayment * reinvestShare
     const annualContribution = monthlyContribution * 12
@@ -68,7 +84,7 @@ export function calculateFreedomPlan(input: CalculatorInput): CalculationResult 
     external = Math.max(0, externalStart - amountToReplace)
     ownerCapital += amountToReplace
     reserve += Math.max(0, annualContribution - amountToReplace)
-    const annualInterest = Math.max(0, payment * termMonths - externalStart)
+    const annualInterest = Math.max(0, payment * yearMonths - principalPaidThisYear)
     totalInterest += annualInterest
 
     schedule.push({
