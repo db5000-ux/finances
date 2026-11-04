@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { annuityPayment, calculateFreedomPlan, remainingBalance } from './calculator'
+import { annuityPayment, calculateFreedomPlan, calculateInvestorPlan, remainingBalance } from './calculator'
 
 describe('annuityPayment', () => {
   it('reproduces the source example accurately', () => {
@@ -52,6 +52,59 @@ describe('calculateFreedomPlan', () => {
     expect(result.baselineTotal).toBeLessThan(result.schedule[0].externalStart)
     expect(result.baselineInterest).toBeGreaterThan(0)
     expect(result.interestSaved).toBeLessThan(5_000_000)
+  })
+})
+
+describe('calculateInvestorPlan', () => {
+  const base = {
+    investmentAmount: 1_200_000,
+    investorSharePercent: 20,
+    dividendMode: 'fixed' as const,
+    fixedDividendRate: 15,
+    companyProfit: 2_000_000,
+    annualTurnover: 10_000_000,
+    turnoverGrowthPercent: 0,
+    assetsValue: 3_000_000,
+    valuationMultiplier: 5,
+    reserveCountsTowardValuation: false,
+    monthlyOwnerContribution: 100_000,
+    maxYears: 10,
+  }
+
+  it('pays fixed dividends as a flat percent of the investment, not of profit', () => {
+    const result = calculateInvestorPlan(base)
+    expect(result.schedule[0].dividends).toBeCloseTo(180_000, 2)
+    expect(result.schedule[4].dividends).toBeCloseTo(180_000, 2)
+  })
+
+  it('pays profit-based dividends proportional to the investor share, growing with turnover', () => {
+    const result = calculateInvestorPlan({
+      ...base,
+      dividendMode: 'profit',
+      turnoverGrowthPercent: 10,
+    })
+    expect(result.schedule[0].dividends).toBeCloseTo(2_000_000 * 1.1 * 0.2, 2)
+    expect(result.schedule[1].dividends).toBeCloseTo(2_000_000 * 1.1 ** 2 * 0.2, 2)
+  })
+
+  it('reaches the self-funded target (no investor) once reserve matches the original investment', () => {
+    const result = calculateInvestorPlan(base)
+    expect(result.selfFundYear).toBe(1)
+  })
+
+  it('finds a buyout year when the owner reserve does not feed company valuation', () => {
+    const result = calculateInvestorPlan({ ...base, reserveCountsTowardValuation: false })
+    expect(result.buyoutYear).not.toBeNull()
+    const stakeValue = 10_000_000 * 5 * 0.2 + 3_000_000 * 0.2
+    expect(result.schedule[0].investorStakeValue).toBeCloseTo(stakeValue, 2)
+  })
+
+  it('pushes the buyout further away (or never) when the reserve itself inflates the valuation and the investor stake', () => {
+    const withReserveInValuation = calculateInvestorPlan({ ...base, reserveCountsTowardValuation: true })
+    const withoutReserveInValuation = calculateInvestorPlan({ ...base, reserveCountsTowardValuation: false })
+    const yearWith = withReserveInValuation.buyoutYear ?? Infinity
+    const yearWithout = withoutReserveInValuation.buyoutYear ?? Infinity
+    expect(yearWith).toBeGreaterThanOrEqual(yearWithout)
   })
 })
 

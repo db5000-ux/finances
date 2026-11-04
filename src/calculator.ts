@@ -129,3 +129,90 @@ export function calculateFreedomPlan(input: CalculatorInput): CalculationResult 
     schedule,
   }
 }
+
+export type DividendMode = 'fixed' | 'profit'
+
+export interface InvestorInput {
+  investmentAmount: number
+  investorSharePercent: number
+  dividendMode: DividendMode
+  fixedDividendRate: number
+  companyProfit: number
+  annualTurnover: number
+  turnoverGrowthPercent: number
+  assetsValue: number
+  valuationMultiplier: number
+  reserveCountsTowardValuation: boolean
+  monthlyOwnerContribution: number
+  maxYears: number
+}
+
+export interface InvestorYearResult {
+  year: number
+  turnover: number
+  profit: number
+  companyValuation: number
+  investorStakeValue: number
+  dividends: number
+  ownerReserve: number
+  stakeGap: number
+}
+
+export interface InvestorResult {
+  schedule: InvestorYearResult[]
+  buyoutYear: number | null
+  totalDividendsPaid: number
+  selfFundYear: number | null
+}
+
+export function calculateInvestorPlan(input: InvestorInput): InvestorResult {
+  const investmentAmount = Math.max(0, input.investmentAmount)
+  const share = Math.min(1, Math.max(0, input.investorSharePercent / 100))
+  const growth = Math.max(0, input.turnoverGrowthPercent) / 100
+  const contribution = Math.max(0, input.monthlyOwnerContribution)
+  const maxYears = Math.max(1, Math.round(input.maxYears))
+  const multiplier = Math.max(0, input.valuationMultiplier)
+  const assets = Math.max(0, input.assetsValue)
+
+  let reserve = 0
+  let totalDividendsPaid = 0
+  let buyoutYear: number | null = null
+  let selfFundYear: number | null = null
+  const schedule: InvestorYearResult[] = []
+
+  for (let year = 1; year <= maxYears; year += 1) {
+    const growthFactor = Math.pow(1 + growth, year)
+    const turnover = Math.max(0, input.annualTurnover) * growthFactor
+    const profit = Math.max(0, input.companyProfit) * growthFactor
+    const dividends = input.dividendMode === 'fixed'
+      ? investmentAmount * Math.max(0, input.fixedDividendRate) / 100
+      : profit * share
+
+    reserve += contribution * 12
+    totalDividendsPaid += dividends
+
+    const companyValuation = turnover * multiplier + assets + (input.reserveCountsTowardValuation ? reserve : 0)
+    const investorStakeValue = companyValuation * share
+    const stakeGap = Math.max(0, investorStakeValue - reserve)
+
+    schedule.push({
+      year,
+      turnover,
+      profit,
+      companyValuation,
+      investorStakeValue,
+      dividends,
+      ownerReserve: reserve,
+      stakeGap,
+    })
+
+    if (buyoutYear === null && reserve >= investorStakeValue) {
+      buyoutYear = year
+    }
+    if (selfFundYear === null && reserve >= investmentAmount) {
+      selfFundYear = year
+    }
+  }
+
+  return { schedule, buyoutYear, totalDividendsPaid, selfFundYear }
+}
