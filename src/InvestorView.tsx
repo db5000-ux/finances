@@ -11,7 +11,8 @@ const DEFAULTS: InvestorInput = {
   fixedDividendRate: 15,
   companyProfit: 3_000_000,
   annualTurnover: 15_000_000,
-  turnoverGrowthPercent: 15,
+  turnoverGrowthWithInvestorPercent: 15,
+  turnoverGrowthWithoutInvestorPercent: 5,
   assetsValue: 2_000_000,
   valuationMultiplier: 5,
   reserveCountsTowardValuation: true,
@@ -90,7 +91,22 @@ export function InvestorView() {
             )}
 
             <NumericField label="Годовой оборот компании" value={input.annualTurnover} suffix="₽ / год" step={100_000} onChange={(value) => updateNumber('annualTurnover', value)} />
-            <NumericField label="Темп роста оборота" value={input.turnoverGrowthPercent} suffix="% в год" step={1} onChange={(value) => updateNumber('turnoverGrowthPercent', value)} />
+            <NumericField
+              label="Темп роста оборота с инвестором"
+              value={input.turnoverGrowthWithInvestorPercent}
+              suffix="% в год"
+              step={1}
+              hint="Деньги и ресурсы инвестора обычно ускоряют рост — иначе зачем его брать"
+              onChange={(value) => updateNumber('turnoverGrowthWithInvestorPercent', value)}
+            />
+            <NumericField
+              label="Темп роста оборота без инвестора"
+              value={input.turnoverGrowthWithoutInvestorPercent}
+              suffix="% в год"
+              step={1}
+              hint="Органический рост своими силами, без внешних денег"
+              onChange={(value) => updateNumber('turnoverGrowthWithoutInvestorPercent', value)}
+            />
             <NumericField label="Стоимость активов" value={input.assetsValue} suffix="₽" step={100_000} onChange={(value) => updateNumber('assetsValue', value)} />
             <NumericField
               label="Мультипликатор оценки"
@@ -164,6 +180,55 @@ export function InvestorView() {
             <div className="section-heading compact">
               <span>02</span>
               <div>
+                <h2>Рост оборота: с инвестором и без</h2>
+                <p>На сколько инвестиции должны ускорить рост, чтобы оправдать отданную долю</p>
+              </div>
+            </div>
+
+            <div className="compare-chart">
+              {result.schedule.map((row) => {
+                const maxValue = Math.max(row.turnoverWithInvestor, row.turnoverWithoutInvestor, 1)
+                return (
+                  <div className="compare-row" key={row.year}>
+                    <div className="year-label"><strong>Год {row.year}</strong></div>
+                    <div className="compare-bars">
+                      <div className="compare-bar-track">
+                        <span className="fill with-fill" style={{ width: `${(row.turnoverWithInvestor / maxValue) * 100}%` }} />
+                        <em>{formatMoney(row.turnoverWithInvestor)} с инвестором</em>
+                      </div>
+                      <div className="compare-bar-track">
+                        <span className="fill without-fill" style={{ width: `${(row.turnoverWithoutInvestor / maxValue) * 100}%` }} />
+                        <em>{formatMoney(row.turnoverWithoutInvestor)} без него</em>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="legend">
+              <span><i className="dot owner-dot" />Оборот с инвестором</span>
+              <span><i className="dot focus-dot" />Оборот без инвестора</span>
+            </div>
+
+            <div className="compare-summary">
+              <div>
+                <span>Оборот через {lastYear?.year ?? input.maxYears} {pluralYears(lastYear?.year ?? input.maxYears)}</span>
+                <strong>{formatMoney(lastYear?.turnoverWithInvestor ?? 0)} <span className="delta">vs {formatMoney(lastYear?.turnoverWithoutInvestor ?? 0)}</span></strong>
+                <span>разница {formatMoney((lastYear?.turnoverWithInvestor ?? 0) - (lastYear?.turnoverWithoutInvestor ?? 0))}</span>
+              </div>
+              <div>
+                <span>Прибыль через {lastYear?.year ?? input.maxYears} {pluralYears(lastYear?.year ?? input.maxYears)}</span>
+                <strong>{formatMoney(lastYear?.profitWithInvestor ?? 0)} <span className="delta">vs {formatMoney(lastYear?.profitWithoutInvestor ?? 0)}</span></strong>
+                <span>разница {formatMoney((lastYear?.profitWithInvestor ?? 0) - (lastYear?.profitWithoutInvestor ?? 0))}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="independence">
+            <div className="section-heading compact">
+              <span>03</span>
+              <div>
                 <h2>Гонка резерва и доли</h2>
                 <p>Догоняет ли накопленный резерв собственника растущую стоимость доли инвестора</p>
               </div>
@@ -195,10 +260,10 @@ export function InvestorView() {
 
       <section className="schedule-section">
         <div className="section-heading">
-          <span>03</span>
+          <span>04</span>
           <div>
             <h2>План по годам</h2>
-            <p>Как растут оборот, капитализация и доля инвестора на фоне резерва собственника</p>
+            <p>Как растут оборот, прибыль, капитализация и доля инвестора на фоне резерва собственника</p>
           </div>
         </div>
 
@@ -207,7 +272,10 @@ export function InvestorView() {
             <thead>
               <tr>
                 <th>Период</th>
-                <th>Оборот</th>
+                <th>Оборот с инвестором</th>
+                <th>Оборот без него</th>
+                <th>Прибыль с инвестором</th>
+                <th>Прибыль без него</th>
                 <th>Капитализация компании</th>
                 <th>Стоимость доли инвестора</th>
                 <th>Дивиденды за год</th>
@@ -219,7 +287,10 @@ export function InvestorView() {
               {result.schedule.map((row) => (
                 <tr key={row.year}>
                   <td data-label="Период"><strong>Год {row.year}</strong></td>
-                  <td data-label="Оборот">{formatMoney(row.turnover)}</td>
+                  <td data-label="Оборот с инвестором">{formatMoney(row.turnoverWithInvestor)}</td>
+                  <td data-label="Оборот без него">{formatMoney(row.turnoverWithoutInvestor)}</td>
+                  <td data-label="Прибыль с инвестором">{formatMoney(row.profitWithInvestor)}</td>
+                  <td data-label="Прибыль без него">{formatMoney(row.profitWithoutInvestor)}</td>
                   <td data-label="Капитализация">{formatMoney(row.companyValuation)}</td>
                   <td data-label="Доля инвестора">{formatMoney(row.investorStakeValue)}</td>
                   <td data-label="Дивиденды">{formatMoney(row.dividends)}</td>
@@ -234,7 +305,7 @@ export function InvestorView() {
 
       <section className="audit">
         <div className="section-heading">
-          <span>04</span>
+          <span>05</span>
           <div>
             <h2>Что важно понимать до старта</h2>
             <p>Инвестиция — это не кредит</p>
@@ -265,7 +336,7 @@ export function InvestorView() {
         {showMethod && (
           <div className="method">
             <p><strong>1.</strong> Капитализация компании в году t = оборот года t × мультипликатор + активы (+ резерв собственника, если включён переключатель).</p>
-            <p><strong>2.</strong> Оборот и прибыль растут на заданный темп роста каждый год: оборот_t = оборот × (1 + темп)^t.</p>
+            <p><strong>2.</strong> Оборот и прибыль считаются на двух треках — с темпом роста «с инвестором» и отдельно с темпом «без инвестора», чтобы показать, насколько привлечение капитала должно ускорить бизнес, чтобы отданная доля того стоила. Капитализация и доля инвестора считаются по треку «с инвестором».</p>
             <p><strong>3.</strong> Стоимость доли инвестора = сумма инвестиции + доля инвестора × (капитализация года t − капитализация на момент сделки). Доля не применяется ко всей капитализации — только к приросту после входа инвестора.</p>
             <p><strong>4.</strong> Дивиденды — либо фиксированный % от суммы инвестиции каждый год, либо % от прибыли года, пропорциональный доле инвестора.</p>
             <p><strong>5.</strong> Резерв собственника копится из ежемесячного взноса, без учёта дивидендов — они уходят инвестору, а не в резерв.</p>

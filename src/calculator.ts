@@ -139,7 +139,8 @@ export interface InvestorInput {
   fixedDividendRate: number
   companyProfit: number
   annualTurnover: number
-  turnoverGrowthPercent: number
+  turnoverGrowthWithInvestorPercent: number
+  turnoverGrowthWithoutInvestorPercent: number
   assetsValue: number
   valuationMultiplier: number
   reserveCountsTowardValuation: boolean
@@ -149,8 +150,10 @@ export interface InvestorInput {
 
 export interface InvestorYearResult {
   year: number
-  turnover: number
-  profit: number
+  turnoverWithInvestor: number
+  turnoverWithoutInvestor: number
+  profitWithInvestor: number
+  profitWithoutInvestor: number
   companyValuation: number
   investorStakeValue: number
   dividends: number
@@ -168,7 +171,8 @@ export interface InvestorResult {
 export function calculateInvestorPlan(input: InvestorInput): InvestorResult {
   const investmentAmount = Math.max(0, input.investmentAmount)
   const share = Math.min(1, Math.max(0, input.investorSharePercent / 100))
-  const growth = Math.max(0, input.turnoverGrowthPercent) / 100
+  const growthWithInvestor = Math.max(0, input.turnoverGrowthWithInvestorPercent) / 100
+  const growthWithoutInvestor = Math.max(0, input.turnoverGrowthWithoutInvestorPercent) / 100
   const contribution = Math.max(0, input.monthlyOwnerContribution)
   const maxYears = Math.max(1, Math.round(input.maxYears))
   const multiplier = Math.max(0, input.valuationMultiplier)
@@ -183,17 +187,20 @@ export function calculateInvestorPlan(input: InvestorInput): InvestorResult {
   const schedule: InvestorYearResult[] = []
 
   for (let year = 1; year <= maxYears; year += 1) {
-    const growthFactor = Math.pow(1 + growth, year)
-    const turnover = Math.max(0, input.annualTurnover) * growthFactor
-    const profit = Math.max(0, input.companyProfit) * growthFactor
+    const factorWithInvestor = Math.pow(1 + growthWithInvestor, year)
+    const factorWithoutInvestor = Math.pow(1 + growthWithoutInvestor, year)
+    const turnoverWithInvestor = Math.max(0, input.annualTurnover) * factorWithInvestor
+    const turnoverWithoutInvestor = Math.max(0, input.annualTurnover) * factorWithoutInvestor
+    const profitWithInvestor = Math.max(0, input.companyProfit) * factorWithInvestor
+    const profitWithoutInvestor = Math.max(0, input.companyProfit) * factorWithoutInvestor
     const dividends = input.dividendMode === 'fixed'
       ? investmentAmount * Math.max(0, input.fixedDividendRate) / 100
-      : profit * share
+      : profitWithInvestor * share
 
     reserve += contribution * 12
     totalDividendsPaid += dividends
 
-    const companyValuation = turnover * multiplier + assets + (input.reserveCountsTowardValuation ? reserve : 0)
+    const companyValuation = turnoverWithInvestor * multiplier + assets + (input.reserveCountsTowardValuation ? reserve : 0)
     // Инвестор не получает долю от всей капитализации — только от суммы, которую
     // он вложил, плюс его доля в приросте стоимости компании с момента сделки.
     const valuationGrowth = companyValuation - baseValuation
@@ -202,8 +209,10 @@ export function calculateInvestorPlan(input: InvestorInput): InvestorResult {
 
     schedule.push({
       year,
-      turnover,
-      profit,
+      turnoverWithInvestor,
+      turnoverWithoutInvestor,
+      profitWithInvestor,
+      profitWithoutInvestor,
       companyValuation,
       investorStakeValue,
       dividends,

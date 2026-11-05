@@ -63,7 +63,8 @@ describe('calculateInvestorPlan', () => {
     fixedDividendRate: 15,
     companyProfit: 2_000_000,
     annualTurnover: 10_000_000,
-    turnoverGrowthPercent: 0,
+    turnoverGrowthWithInvestorPercent: 0,
+    turnoverGrowthWithoutInvestorPercent: 0,
     assetsValue: 3_000_000,
     valuationMultiplier: 5,
     reserveCountsTowardValuation: false,
@@ -81,7 +82,7 @@ describe('calculateInvestorPlan', () => {
     const result = calculateInvestorPlan({
       ...base,
       dividendMode: 'profit',
-      turnoverGrowthPercent: 10,
+      turnoverGrowthWithInvestorPercent: 10,
     })
     expect(result.schedule[0].dividends).toBeCloseTo(2_000_000 * 1.1 * 0.2, 2)
     expect(result.schedule[1].dividends).toBeCloseTo(2_000_000 * 1.1 ** 2 * 0.2, 2)
@@ -93,25 +94,38 @@ describe('calculateInvestorPlan', () => {
   })
 
   it('values the investor stake as the original investment plus their share of valuation growth since the deal, not a cut of the whole company', () => {
-    const noGrowthNoReserve = calculateInvestorPlan({ ...base, turnoverGrowthPercent: 0, reserveCountsTowardValuation: false })
+    const noGrowthNoReserve = calculateInvestorPlan({ ...base, reserveCountsTowardValuation: false })
     // Нет роста оборота и резерв не учитывается → капитализация не меняется,
     // значит доля инвестора остаётся равна вложенной сумме, а не доле всей компании.
     expect(noGrowthNoReserve.schedule[0].investorStakeValue).toBeCloseTo(base.investmentAmount, 2)
     expect(noGrowthNoReserve.schedule[4].investorStakeValue).toBeCloseTo(base.investmentAmount, 2)
 
-    const withReserve = calculateInvestorPlan({ ...base, turnoverGrowthPercent: 0, reserveCountsTowardValuation: true })
+    const withReserve = calculateInvestorPlan({ ...base, reserveCountsTowardValuation: true })
     const expectedYear1 = base.investmentAmount + 0.2 * (base.monthlyOwnerContribution * 12)
     expect(withReserve.schedule[0].investorStakeValue).toBeCloseTo(expectedYear1, 2)
   })
 
   it('reaches buyout quickly when the company is not growing and the owner saves aggressively', () => {
-    const result = calculateInvestorPlan({ ...base, turnoverGrowthPercent: 0, reserveCountsTowardValuation: false })
+    const result = calculateInvestorPlan({ ...base, reserveCountsTowardValuation: false })
     expect(result.buyoutYear).toBe(1)
   })
 
   it('never reaches buyout when compounding turnover growth outpaces what the owner can save', () => {
-    const result = calculateInvestorPlan({ ...base, turnoverGrowthPercent: 10, reserveCountsTowardValuation: false })
+    const result = calculateInvestorPlan({ ...base, turnoverGrowthWithInvestorPercent: 10, reserveCountsTowardValuation: false })
     expect(result.buyoutYear).toBeNull()
+  })
+
+  it('projects turnover and profit on two growth tracks so the with/without comparison is meaningful', () => {
+    const result = calculateInvestorPlan({
+      ...base,
+      turnoverGrowthWithInvestorPercent: 20,
+      turnoverGrowthWithoutInvestorPercent: 5,
+    })
+    expect(result.schedule[0].turnoverWithInvestor).toBeCloseTo(10_000_000 * 1.2, 2)
+    expect(result.schedule[0].turnoverWithoutInvestor).toBeCloseTo(10_000_000 * 1.05, 2)
+    expect(result.schedule[0].profitWithInvestor).toBeCloseTo(2_000_000 * 1.2, 2)
+    expect(result.schedule[0].profitWithoutInvestor).toBeCloseTo(2_000_000 * 1.05, 2)
+    expect(result.schedule[9].turnoverWithInvestor).toBeGreaterThan(result.schedule[9].turnoverWithoutInvestor)
   })
 
   it('pushes the buyout further away (or never) when the reserve itself inflates the valuation and the investor stake', () => {
