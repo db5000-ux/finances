@@ -2,7 +2,13 @@ import { useMemo, useState } from 'react'
 import { CircleHelp, RotateCcw, Scale } from 'lucide-react'
 import { calculateInvestorPlan, type DividendMode, type InvestorInput } from './calculator'
 import { CheckboxField, NumericField, SegmentedField } from './fields'
-import { decimal, formatMoney, pluralYears } from './format'
+import { CURRENCY_LABEL, decimal, formatMoney, pluralYears } from './format'
+import { LineChart } from './LineChart'
+
+// Прошли проверку на различимость (dataviz-палитра, пара slot1/slot2) —
+// фирменный зелёный сайта слишком слабый по насыщенности для парных линий.
+const CHART_COLOR_WITH = '#2a78d6'
+const CHART_COLOR_WITHOUT = '#eb6834'
 
 const DEFAULTS: InvestorInput = {
   investmentAmount: 1_000_000,
@@ -66,7 +72,7 @@ export function InvestorView() {
           </div>
 
           <div className="fields">
-            <NumericField label="Сумма инвестиции" value={input.investmentAmount} suffix="₽" step={50_000} onChange={(value) => updateNumber('investmentAmount', value)} />
+            <NumericField label="Сумма инвестиции" value={input.investmentAmount} suffix={CURRENCY_LABEL} step={50_000} onChange={(value) => updateNumber('investmentAmount', value)} />
             <NumericField label="Доля инвестора в капитале" value={input.investorSharePercent} suffix="%" max={100} onChange={(value) => updateNumber('investorSharePercent', value)} />
 
             <SegmentedField label="Дивиденды инвестору" value={input.dividendMode} options={DIVIDEND_OPTIONS} onChange={(value) => update('dividendMode', value)} />
@@ -83,14 +89,14 @@ export function InvestorView() {
               <NumericField
                 label="Прибыль компании сейчас"
                 value={input.companyProfit}
-                suffix="₽ / год"
+                suffix={`${CURRENCY_LABEL} / год`}
                 step={100_000}
                 hint="Дивиденды инвестора = его доля × прибыль года"
                 onChange={(value) => updateNumber('companyProfit', value)}
               />
             )}
 
-            <NumericField label="Годовой оборот компании" value={input.annualTurnover} suffix="₽ / год" step={100_000} onChange={(value) => updateNumber('annualTurnover', value)} />
+            <NumericField label="Годовой оборот компании" value={input.annualTurnover} suffix={`${CURRENCY_LABEL} / год`} step={100_000} onChange={(value) => updateNumber('annualTurnover', value)} />
             <NumericField
               label="Темп роста оборота с инвестором"
               value={input.turnoverGrowthWithInvestorPercent}
@@ -107,7 +113,7 @@ export function InvestorView() {
               hint="Органический рост своими силами, без внешних денег"
               onChange={(value) => updateNumber('turnoverGrowthWithoutInvestorPercent', value)}
             />
-            <NumericField label="Стоимость активов" value={input.assetsValue} suffix="₽" step={100_000} onChange={(value) => updateNumber('assetsValue', value)} />
+            <NumericField label="Стоимость активов" value={input.assetsValue} suffix={CURRENCY_LABEL} step={100_000} onChange={(value) => updateNumber('assetsValue', value)} />
             <NumericField
               label="Мультипликатор оценки"
               value={input.valuationMultiplier}
@@ -122,7 +128,7 @@ export function InvestorView() {
               hint="Так бывает чаще всего, если это отдельно не прописано в соглашении с инвестором"
               onChange={(value) => update('reserveCountsTowardValuation', value)}
             />
-            <NumericField label="Взнос в банк собственника" value={input.monthlyOwnerContribution} suffix="₽ / месяц" step={5_000} onChange={(value) => updateNumber('monthlyOwnerContribution', value)} />
+            <NumericField label="Взнос в банк собственника" value={input.monthlyOwnerContribution} suffix={`${CURRENCY_LABEL} / месяц`} step={5_000} onChange={(value) => updateNumber('monthlyOwnerContribution', value)} />
             <NumericField label="Горизонт расчёта" value={input.maxYears} suffix="лет" max={30} onChange={(value) => updateNumber('maxYears', value)} />
           </div>
 
@@ -185,41 +191,24 @@ export function InvestorView() {
               </div>
             </div>
 
-            <div className="compare-chart">
-              {result.schedule.map((row) => {
-                const maxValue = Math.max(row.turnoverWithInvestor, row.turnoverWithoutInvestor, 1)
-                return (
-                  <div className="compare-row" key={row.year}>
-                    <div className="year-label"><strong>Год {row.year}</strong></div>
-                    <div className="compare-bars">
-                      <div className="compare-bar-track">
-                        <span className="fill with-fill" style={{ width: `${(row.turnoverWithInvestor / maxValue) * 100}%` }} />
-                        <em>{formatMoney(row.turnoverWithInvestor)} с инвестором</em>
-                      </div>
-                      <div className="compare-bar-track">
-                        <span className="fill without-fill" style={{ width: `${(row.turnoverWithoutInvestor / maxValue) * 100}%` }} />
-                        <em>{formatMoney(row.turnoverWithoutInvestor)} без него</em>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="legend">
-              <span><i className="dot owner-dot" />Оборот с инвестором</span>
-              <span><i className="dot focus-dot" />Оборот без инвестора</span>
-            </div>
+            <LineChart
+              years={result.schedule.map((row) => row.year)}
+              valueFormatter={formatMoney}
+              series={[
+                { label: 'С инвестором', color: CHART_COLOR_WITH, values: result.schedule.map((row) => row.turnoverWithInvestor) },
+                { label: 'Без инвестора', color: CHART_COLOR_WITHOUT, values: result.schedule.map((row) => row.turnoverWithoutInvestor) },
+              ]}
+            />
 
             <div className="compare-summary">
               <div>
                 <span>Оборот через {lastYear?.year ?? input.maxYears} {pluralYears(lastYear?.year ?? input.maxYears)}</span>
-                <strong>{formatMoney(lastYear?.turnoverWithInvestor ?? 0)} <span className="delta">vs {formatMoney(lastYear?.turnoverWithoutInvestor ?? 0)}</span></strong>
+                <strong>{formatMoney(lastYear?.turnoverWithInvestor ?? 0)} <span className="delta">против {formatMoney(lastYear?.turnoverWithoutInvestor ?? 0)}</span></strong>
                 <span>разница {formatMoney((lastYear?.turnoverWithInvestor ?? 0) - (lastYear?.turnoverWithoutInvestor ?? 0))}</span>
               </div>
               <div>
                 <span>Прибыль через {lastYear?.year ?? input.maxYears} {pluralYears(lastYear?.year ?? input.maxYears)}</span>
-                <strong>{formatMoney(lastYear?.profitWithInvestor ?? 0)} <span className="delta">vs {formatMoney(lastYear?.profitWithoutInvestor ?? 0)}</span></strong>
+                <strong>{formatMoney(lastYear?.profitWithInvestor ?? 0)} <span className="delta">против {formatMoney(lastYear?.profitWithoutInvestor ?? 0)}</span></strong>
                 <span>разница {formatMoney((lastYear?.profitWithInvestor ?? 0) - (lastYear?.profitWithoutInvestor ?? 0))}</span>
               </div>
             </div>

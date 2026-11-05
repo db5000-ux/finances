@@ -1,3 +1,40 @@
+import { useEffect, useState } from 'react'
+
+const groupInteger = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
+const groupDecimal = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 })
+
+function formatDisplay(value: number, allowDecimal: boolean): string {
+  if (!Number.isFinite(value)) return ''
+  return (allowDecimal ? groupDecimal : groupInteger).format(value)
+}
+
+function formatPlain(value: number, allowDecimal: boolean): string {
+  if (!Number.isFinite(value)) return ''
+  if (!allowDecimal) return String(Math.round(value))
+  return String(Math.round(value * 100) / 100).replace('.', ',')
+}
+
+// Чистит ввод и убирает лишний ноль впереди числа — иначе после сброса поля
+// в 0 следующая цифра печатается после него ("05") вместо замены.
+function sanitizeTyped(raw: string, allowDecimal: boolean): string {
+  let cleaned = raw.replace(/[^\d,.\s]/g, '').replace(/\s/g, '')
+  if (allowDecimal) {
+    cleaned = cleaned.replace('.', ',')
+    const firstComma = cleaned.indexOf(',')
+    if (firstComma !== -1) {
+      cleaned = cleaned.slice(0, firstComma + 1) + cleaned.slice(firstComma + 1).replace(/,/g, '')
+    }
+  } else {
+    cleaned = cleaned.replace(/[,.]/g, '')
+  }
+  return cleaned.replace(/^0+(?=\d)/, '')
+}
+
+function parseTyped(text: string): number {
+  const n = Number(text.replace(',', '.'))
+  return Number.isFinite(n) ? n : 0
+}
+
 export function NumericField({
   label,
   value,
@@ -17,18 +54,35 @@ export function NumericField({
   hint?: string
   onChange: (value: number) => void
 }) {
+  const allowDecimal = !Number.isInteger(step)
+  const [focused, setFocused] = useState(false)
+  const [text, setText] = useState(() => formatDisplay(value, allowDecimal))
+
+  useEffect(() => {
+    if (!focused) setText(formatDisplay(value, allowDecimal))
+  }, [value, focused, allowDecimal])
+
   return (
     <label className="field">
       <span className="field-label">{label}</span>
       <span className="input-shell">
         <input
-          type="number"
-          value={value}
+          type="text"
+          inputMode={allowDecimal ? 'decimal' : 'numeric'}
+          value={text}
           min={min}
           max={max}
           step={step}
-          inputMode="decimal"
-          onChange={(event) => onChange(Number(event.target.value))}
+          onFocus={() => {
+            setFocused(true)
+            setText(formatPlain(value, allowDecimal))
+          }}
+          onChange={(event) => {
+            const cleaned = sanitizeTyped(event.target.value, allowDecimal)
+            setText(cleaned)
+            onChange(parseTyped(cleaned))
+          }}
+          onBlur={() => setFocused(false)}
         />
         <span>{suffix}</span>
       </span>

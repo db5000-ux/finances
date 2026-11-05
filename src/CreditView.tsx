@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ArrowDown, Check, CircleHelp, RotateCcw, ShieldCheck } from 'lucide-react'
 import { calculateFreedomPlan, type CalculatorInput } from './calculator'
 import { NumericField } from './fields'
-import { decimal, formatMoney, pluralYears } from './format'
+import { CURRENCY_LABEL, decimal, formatMoney, pluralYears } from './format'
 
 const DEFAULTS: CalculatorInput = {
   principal: 900_000,
@@ -44,16 +44,16 @@ export function CreditView() {
           </div>
 
           <div className="fields">
-            <NumericField label="Сумма внешнего кредита" value={input.principal} suffix="₽" step={10_000} onChange={(value) => update('principal', value)} />
+            <NumericField label="Сумма внешнего кредита" value={input.principal} suffix={CURRENCY_LABEL} step={10_000} onChange={(value) => update('principal', value)} />
             <NumericField label="Ставка банка" value={input.annualRate} suffix="% годовых" step={0.1} max={100} onChange={(value) => update('annualRate', value)} />
             <NumericField label="Срок кредита" value={input.termMonths} suffix="месяцев" max={360} onChange={(value) => update('termMonths', value)} />
-            <NumericField label="Взнос в банк собственника" value={input.monthlyOwnerContribution} suffix="₽ / месяц" step={1_000} onChange={(value) => update('monthlyOwnerContribution', value)} />
+            <NumericField label="Взнос в банк собственника" value={input.monthlyOwnerContribution} suffix={`${CURRENCY_LABEL} / месяц`} step={1_000} onChange={(value) => update('monthlyOwnerContribution', value)} />
             <NumericField
               label="Направлять экономию во взнос"
               value={input.reinvestSavingsPercent}
               suffix="%"
               max={100}
-              hint="45% повторяет логику примера: около 10 000 ₽ из сэкономленных 22 000 ₽"
+              hint={`45% повторяет логику примера: около 10 000 ${CURRENCY_LABEL} из сэкономленных 22 000 ${CURRENCY_LABEL}`}
               onChange={(value) => update('reinvestSavingsPercent', value)}
             />
           </div>
@@ -208,11 +208,11 @@ export function CreditView() {
         <div className="audit-grid">
           <div className="audit-result">
             <ShieldCheck size={24} aria-hidden="true" />
-            <p><strong>Подсчёт верный.</strong> При аннуитетной схеме 900 000 ₽ под 20% на 12 месяцев дают платёж 83 371 ₽ и общую выплату 1 000 453 ₽.</p>
+            <p><strong>Подсчёт верный.</strong> При аннуитетной схеме 900 000 {CURRENCY_LABEL} под 20% на 12 месяцев дают платёж 83 371 {CURRENCY_LABEL} и общую выплату 1 000 453 {CURRENCY_LABEL}.</p>
           </div>
           <div className="audit-result">
             <ArrowDown size={24} aria-hidden="true" />
-            <p>После замены 240 000 ₽ платёж по оставшимся 660 000 ₽ становится 61 139 ₽ — экономия 22 232 ₽ в месяц.</p>
+            <p>После замены 240 000 {CURRENCY_LABEL} платёж по оставшимся 660 000 {CURRENCY_LABEL} становится 61 139 {CURRENCY_LABEL} — экономия 22 232 {CURRENCY_LABEL} в месяц.</p>
           </div>
           <div className="audit-note">
             <CircleHelp size={22} aria-hidden="true" />
