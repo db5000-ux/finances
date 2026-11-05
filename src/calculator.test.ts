@@ -92,11 +92,26 @@ describe('calculateInvestorPlan', () => {
     expect(result.selfFundYear).toBe(1)
   })
 
-  it('finds a buyout year when the owner reserve does not feed company valuation', () => {
-    const result = calculateInvestorPlan({ ...base, reserveCountsTowardValuation: false })
-    expect(result.buyoutYear).not.toBeNull()
-    const stakeValue = 10_000_000 * 5 * 0.2 + 3_000_000 * 0.2
-    expect(result.schedule[0].investorStakeValue).toBeCloseTo(stakeValue, 2)
+  it('values the investor stake as the original investment plus their share of valuation growth since the deal, not a cut of the whole company', () => {
+    const noGrowthNoReserve = calculateInvestorPlan({ ...base, turnoverGrowthPercent: 0, reserveCountsTowardValuation: false })
+    // Нет роста оборота и резерв не учитывается → капитализация не меняется,
+    // значит доля инвестора остаётся равна вложенной сумме, а не доле всей компании.
+    expect(noGrowthNoReserve.schedule[0].investorStakeValue).toBeCloseTo(base.investmentAmount, 2)
+    expect(noGrowthNoReserve.schedule[4].investorStakeValue).toBeCloseTo(base.investmentAmount, 2)
+
+    const withReserve = calculateInvestorPlan({ ...base, turnoverGrowthPercent: 0, reserveCountsTowardValuation: true })
+    const expectedYear1 = base.investmentAmount + 0.2 * (base.monthlyOwnerContribution * 12)
+    expect(withReserve.schedule[0].investorStakeValue).toBeCloseTo(expectedYear1, 2)
+  })
+
+  it('reaches buyout quickly when the company is not growing and the owner saves aggressively', () => {
+    const result = calculateInvestorPlan({ ...base, turnoverGrowthPercent: 0, reserveCountsTowardValuation: false })
+    expect(result.buyoutYear).toBe(1)
+  })
+
+  it('never reaches buyout when compounding turnover growth outpaces what the owner can save', () => {
+    const result = calculateInvestorPlan({ ...base, turnoverGrowthPercent: 10, reserveCountsTowardValuation: false })
+    expect(result.buyoutYear).toBeNull()
   })
 
   it('pushes the buyout further away (or never) when the reserve itself inflates the valuation and the investor stake', () => {

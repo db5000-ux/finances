@@ -174,6 +174,8 @@ export function calculateInvestorPlan(input: InvestorInput): InvestorResult {
   const multiplier = Math.max(0, input.valuationMultiplier)
   const assets = Math.max(0, input.assetsValue)
 
+  const baseValuation = Math.max(0, input.annualTurnover) * multiplier + assets
+
   let reserve = 0
   let totalDividendsPaid = 0
   let buyoutYear: number | null = null
@@ -192,7 +194,10 @@ export function calculateInvestorPlan(input: InvestorInput): InvestorResult {
     totalDividendsPaid += dividends
 
     const companyValuation = turnover * multiplier + assets + (input.reserveCountsTowardValuation ? reserve : 0)
-    const investorStakeValue = companyValuation * share
+    // Инвестор не получает долю от всей капитализации — только от суммы, которую
+    // он вложил, плюс его доля в приросте стоимости компании с момента сделки.
+    const valuationGrowth = companyValuation - baseValuation
+    const investorStakeValue = Math.max(0, investmentAmount + share * valuationGrowth)
     const stakeGap = Math.max(0, investorStakeValue - reserve)
 
     schedule.push({
