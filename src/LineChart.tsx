@@ -6,24 +6,24 @@ export interface LineSeries {
   values: number[]
 }
 
+// Округляет до двух значащих цифр — шаг 1,2,5,10 по целой декаде давал
+// слишком грубый запас (максимум 60,68 млн скакал сразу к 100 млн).
 function niceMax(value: number): number {
   if (value <= 0) return 1
   const exponent = Math.floor(Math.log10(value))
-  const base = Math.pow(10, exponent)
-  const fraction = value / base
-  const niceFraction = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10
-  return niceFraction * base
+  const step = Math.pow(10, exponent - 1)
+  const rounded = Math.ceil(value / step) * step
+  return rounded > value ? rounded : rounded + step
 }
 
-// Опускает нижнюю границу шкалы до ближайшего «круглого» числа не выше
-// минимума данных — симметрично niceMax, которая поднимает верхнюю границу.
+// Опускает нижнюю границу шкалы до ближайшего числа не выше минимума
+// данных — тем же шагом в две значащие цифры, симметрично niceMax.
 function niceMin(value: number): number {
   if (value <= 0) return 0
   const exponent = Math.floor(Math.log10(value))
-  const base = Math.pow(10, exponent)
-  const fraction = value / base
-  const niceFraction = fraction >= 5 ? 5 : fraction >= 2 ? 2 : 1
-  return niceFraction * base
+  const step = Math.pow(10, exponent - 1)
+  const rounded = Math.floor(value / step) * step
+  return rounded < value ? rounded : Math.max(0, rounded - step)
 }
 
 // MARGIN.right резервирует место под подпись значения в конце линии
