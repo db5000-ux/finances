@@ -70,6 +70,8 @@ describe('calculateInvestorPlan', () => {
     reserveCountsTowardValuation: false,
     monthlyOwnerContribution: 100_000,
     maxYears: 10,
+    shareFromGrowthOnly: true,
+    investmentGrowsWithStake: false,
   }
 
   it('pays fixed dividends as a flat percent of the investment, not of profit', () => {
@@ -134,6 +136,20 @@ describe('calculateInvestorPlan', () => {
     const yearWith = withReserveInValuation.buyoutYear ?? Infinity
     const yearWithout = withoutReserveInValuation.buyoutYear ?? Infinity
     expect(yearWith).toBeGreaterThanOrEqual(yearWithout)
+  })
+
+  it('values the stake as a straight share of the whole valuation when shareFromGrowthOnly is off', () => {
+    const result = calculateInvestorPlan({ ...base, shareFromGrowthOnly: false })
+    const expectedValuation = base.annualTurnover * base.valuationMultiplier + base.assetsValue
+    expect(result.schedule[0].investorStakeValue).toBeCloseTo(0.2 * expectedValuation, 2)
+    expect(result.schedule[4].investorStakeValue).toBeCloseTo(0.2 * expectedValuation, 2)
+  })
+
+  it('compounds fixed dividends on the prior year stake value when investmentGrowsWithStake is on', () => {
+    const result = calculateInvestorPlan({ ...base, reserveCountsTowardValuation: true, investmentGrowsWithStake: true })
+    expect(result.schedule[0].dividends).toBeCloseTo(base.investmentAmount * 0.15, 2)
+    expect(result.schedule[0].investorStakeValue).toBeCloseTo(1_440_000, 2)
+    expect(result.schedule[1].dividends).toBeCloseTo(1_440_000 * 0.15, 2)
   })
 })
 

@@ -146,6 +146,8 @@ export interface InvestorInput {
   reserveCountsTowardValuation: boolean
   monthlyOwnerContribution: number
   maxYears: number
+  shareFromGrowthOnly: boolean
+  investmentGrowsWithStake: boolean
 }
 
 export interface InvestorYearResult {
@@ -184,6 +186,7 @@ export function calculateInvestorPlan(input: InvestorInput): InvestorResult {
   let totalDividendsPaid = 0
   let buyoutYear: number | null = null
   let selfFundYear: number | null = null
+  let dividendBase = investmentAmount
   const schedule: InvestorYearResult[] = []
 
   for (let year = 1; year <= maxYears; year += 1) {
@@ -194,7 +197,7 @@ export function calculateInvestorPlan(input: InvestorInput): InvestorResult {
     const profitWithInvestor = Math.max(0, input.companyProfit) * factorWithInvestor
     const profitWithoutInvestor = Math.max(0, input.companyProfit) * factorWithoutInvestor
     const dividends = input.dividendMode === 'fixed'
-      ? investmentAmount * Math.max(0, input.fixedDividendRate) / 100
+      ? dividendBase * Math.max(0, input.fixedDividendRate) / 100
       : profitWithInvestor * share
 
     reserve += contribution * 12
@@ -203,9 +206,18 @@ export function calculateInvestorPlan(input: InvestorInput): InvestorResult {
     const companyValuation = turnoverWithInvestor * multiplier + assets + (input.reserveCountsTowardValuation ? reserve : 0)
     // Инвестор не получает долю от всей капитализации — только от суммы, которую
     // он вложил, плюс его доля в приросте стоимости компании с момента сделки.
+    // Переключатель shareFromGrowthOnly позволяет сравнить с прямой долей от всей капитализации.
     const valuationGrowth = companyValuation - baseValuation
-    const investorStakeValue = Math.max(0, investmentAmount + share * valuationGrowth)
+    const investorStakeValue = input.shareFromGrowthOnly
+      ? Math.max(0, investmentAmount + share * valuationGrowth)
+      : Math.max(0, share * companyValuation)
     const stakeGap = Math.max(0, investorStakeValue - reserve)
+
+    // Если инвестиции растут вместе с капиталом инвестора, следующий год дивидендов
+    // считается уже от выросшей стоимости доли, а не от исходной суммы инвестиции.
+    if (input.investmentGrowsWithStake) {
+      dividendBase = investorStakeValue
+    }
 
     schedule.push({
       year,

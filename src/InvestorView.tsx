@@ -24,6 +24,8 @@ const DEFAULTS: InvestorInput = {
   reserveCountsTowardValuation: true,
   monthlyOwnerContribution: 50_000,
   maxYears: 10,
+  shareFromGrowthOnly: true,
+  investmentGrowsWithStake: false,
 }
 
 const DIVIDEND_OPTIONS: { value: DividendMode; label: string }[] = [
@@ -74,17 +76,31 @@ export function InvestorView() {
           <div className="fields">
             <NumericField label="Сумма инвестиции" value={input.investmentAmount} suffix={CURRENCY_LABEL} step={50_000} onChange={(value) => updateNumber('investmentAmount', value)} />
             <NumericField label="Доля инвестора в капитале" value={input.investorSharePercent} suffix="%" max={100} onChange={(value) => updateNumber('investorSharePercent', value)} />
+            <CheckboxField
+              label="Доля считается от прироста капитала"
+              checked={input.shareFromGrowthOnly}
+              hint="Включено: доля × прирост капитализации с момента сделки, сверх тела инвестиции. Выключено: доля × вся текущая капитализация компании."
+              onChange={(value) => update('shareFromGrowthOnly', value)}
+            />
 
             <SegmentedField label="Дивиденды инвестору" value={input.dividendMode} options={DIVIDEND_OPTIONS} onChange={(value) => update('dividendMode', value)} />
             {input.dividendMode === 'fixed' ? (
-              <NumericField
-                label="Ставка дивидендов"
-                value={input.fixedDividendRate}
-                suffix="% годовых от суммы инвестиции"
-                step={0.5}
-                max={100}
-                onChange={(value) => updateNumber('fixedDividendRate', value)}
-              />
+              <>
+                <NumericField
+                  label="Ставка дивидендов"
+                  value={input.fixedDividendRate}
+                  suffix="% годовых от суммы инвестиции"
+                  step={0.5}
+                  max={100}
+                  onChange={(value) => updateNumber('fixedDividendRate', value)}
+                />
+                <CheckboxField
+                  label="Инвестиции увеличиваются ежегодно из-за роста капитала инвестора"
+                  checked={input.investmentGrowsWithStake}
+                  hint="Следующий год дивидендов считается от выросшей стоимости доли инвестора, а не от исходной суммы инвестиции."
+                  onChange={(value) => update('investmentGrowsWithStake', value)}
+                />
+              </>
             ) : (
               <NumericField
                 label="Прибыль компании сейчас"
@@ -355,8 +371,8 @@ export function InvestorView() {
           <div className="method">
             <p><strong>1.</strong> Капитализация компании в году t = оборот года t × мультипликатор + активы (+ резерв собственника, если включён переключатель).</p>
             <p><strong>2.</strong> Оборот и прибыль считаются на двух треках — с темпом роста «с инвестором» и отдельно с темпом «без инвестора», чтобы показать, насколько привлечение капитала должно ускорить бизнес, чтобы отданная доля того стоила. Капитализация и доля инвестора считаются по треку «с инвестором».</p>
-            <p><strong>3.</strong> Стоимость доли инвестора = сумма инвестиции + доля инвестора × (капитализация года t − капитализация на момент сделки). Доля не применяется ко всей капитализации — только к приросту после входа инвестора.</p>
-            <p><strong>4.</strong> Дивиденды — либо фиксированный % от суммы инвестиции каждый год, либо % от прибыли года, пропорциональный доле инвестора.</p>
+            <p><strong>3.</strong> Стоимость доли инвестора — по переключателю «Доля считается от прироста капитала»: включён (по умолчанию) — сумма инвестиции + доля инвестора × (капитализация года t − капитализация на момент сделки), доля не применяется ко всей капитализации, только к приросту после входа инвестора; выключен — доля инвестора × вся текущая капитализация компании.</p>
+            <p><strong>4.</strong> Дивиденды — либо фиксированный % от суммы инвестиции каждый год, либо % от прибыли года, пропорциональный доле инвестора. При фиксированном % переключатель «Инвестиции увеличиваются ежегодно из-за роста капитала инвестора» меняет базу: выключен — всегда от исходной суммы инвестиции; включён — каждый следующий год от стоимости доли инвестора на конец предыдущего года.</p>
             <p><strong>5.</strong> Резерв собственника копится из ежемесячного взноса, без учёта дивидендов — они уходят инвестору, а не в резерв.</p>
             <p><strong>6.</strong> «Точка выгодного выкупа» — первый год, когда резерв собственника не меньше текущей стоимости доли инвестора.</p>
             <p><strong>7.</strong> Сценарий «своими силами» использует тот же резерв, но сравнивает его с номиналом исходной суммы инвестиции, а не с растущей долей.</p>
