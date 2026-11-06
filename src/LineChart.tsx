@@ -16,24 +16,19 @@ function niceMax(value: number): number {
   return rounded > value ? rounded : rounded + step
 }
 
-// Опускает нижнюю границу шкалы до ближайшего числа не выше минимума
-// данных — тем же шагом в две значащие цифры, симметрично niceMax.
-function niceMin(value: number): number {
-  if (value <= 0) return 0
+// Округляет вверх до ближайшего числа по лестнице 1/2/5/10 на нужном
+// порядке (1000, 2000, 5000, 10000...). Используется и для верхней
+// границы, и для самого размаха шкалы (см. ниже) — а не для нижней
+// границы отдельно: если верх и низ округлять каждый сам по себе,
+// разница между ними получается произвольной, и середину уже не
+// поделить на ровные числа (3,15 млн округлялось в 3,1 млн, хотя сама
+// шкала просила 3 млн, потому что 13 млн − 3 млн = 10 млн — круглое и
+// делится на 4-5 ровно).
+function niceStep(value: number): number {
+  if (value <= 0) return 1
   const exponent = Math.floor(Math.log10(value))
-  const step = Math.pow(10, exponent - 1)
-  const rounded = Math.floor(value / step) * step
-  return rounded < value ? rounded : Math.max(0, rounded - step)
-}
-
-// Подбирает «круглый» шаг сетки (1/2/5/10 на нужном порядке — например
-// 1000, 2000, 5000, 10000, 20000...) под масштаб диапазона, чтобы линии
-// сетки попадали на читаемые числа, а не на случайные доли диапазона.
-function niceStep(roughStep: number): number {
-  if (roughStep <= 0) return 1
-  const exponent = Math.floor(Math.log10(roughStep))
   const base = Math.pow(10, exponent)
-  const fraction = roughStep / base
+  const fraction = value / base
   const niceFraction = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10
   return niceFraction * base
 }
@@ -59,22 +54,22 @@ export function LineChart({
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
   const allValues = series.flatMap((item) => item.values)
+  const rawMin = Math.min(...allValues)
   const maxValue = niceMax(Math.max(1, ...allValues))
-  const minValue = Math.min(niceMin(Math.min(...allValues)), maxValue)
+  // Размах шкалы (не нижняя граница!) округляется вверх до круглого числа —
+  // так верх и низ остаются согласованы, и их разницу ровно делить на доли.
+  const span = niceStep(maxValue - rawMin)
+  const minValue = Math.max(0, maxValue - span)
   const valueSpan = Math.max(1, maxValue - minValue)
   const stepX = years.length > 1 ? PLOT_WIDTH / (years.length - 1) : 0
   const xAt = (index: number) => MARGIN.left + stepX * index
   const yAt = (value: number) => MARGIN.top + PLOT_HEIGHT - ((value - minValue) / valueSpan) * PLOT_HEIGHT
 
-  // Круглые промежуточные линии сетки отбрасываются, если они попадают
-  // слишком близко к границе шкалы — иначе их подписи наезжают друг на друга.
-  const gridStep = niceStep(valueSpan / 4)
-  const edgeGap = gridStep * 0.3
-  const gridValues: number[] = [minValue]
-  for (let tick = Math.ceil(minValue / gridStep) * gridStep; tick < maxValue - edgeGap; tick += gridStep) {
-    if (tick > minValue + edgeGap) gridValues.push(tick)
-  }
-  gridValues.push(maxValue)
+  // Промежуточные линии сетки — это просто равные доли уже круглого
+  // размаха, без отдельного округления: раз сам размах круглый, доли
+  // получаются ровными числами автоматически.
+  const GRID_DIVISIONS = 5
+  const gridValues = Array.from({ length: GRID_DIVISIONS + 1 }, (_, index) => minValue + (valueSpan * index) / GRID_DIVISIONS)
 
   const updateHover = (clientX: number, clientY: number) => {
     const svg = svgRef.current
