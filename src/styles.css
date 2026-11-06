@@ -191,6 +191,8 @@ footer p { margin: 0; }
 .checkbox-shell { display: flex; align-items: center; gap: 10px; }
 .checkbox-shell input { width: 18px; height: 18px; accent-color: var(--green); }
 
+.chart-subheading { margin: 0 0 12px; font-size: 13px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.chart-subheading:not(:first-of-type) { margin-top: 36px; }
 .line-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart-grid { stroke: var(--soft-line); stroke-width: 1; }
 .chart-axis-label { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }

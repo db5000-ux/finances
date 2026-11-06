@@ -186,17 +186,28 @@ export function InvestorView() {
             <div className="section-heading compact">
               <span>02</span>
               <div>
-                <h2>Рост оборота: с инвестором и без</h2>
+                <h2>Рост оборота и прибыли: с инвестором и без</h2>
                 <p>На сколько инвестиции должны ускорить рост, чтобы оправдать отданную долю</p>
               </div>
             </div>
 
+            <h3 className="chart-subheading">Оборот</h3>
             <LineChart
               years={result.schedule.map((row) => row.year)}
               valueFormatter={formatMoney}
               series={[
                 { label: 'С инвестором', color: CHART_COLOR_WITH, values: result.schedule.map((row) => row.turnoverWithInvestor) },
                 { label: 'Без инвестора', color: CHART_COLOR_WITHOUT, values: result.schedule.map((row) => row.turnoverWithoutInvestor) },
+              ]}
+            />
+
+            <h3 className="chart-subheading">Прибыль</h3>
+            <LineChart
+              years={result.schedule.map((row) => row.year)}
+              valueFormatter={formatMoney}
+              series={[
+                { label: 'С инвестором', color: CHART_COLOR_WITH, values: result.schedule.map((row) => row.profitWithInvestor) },
+                { label: 'Без инвестора', color: CHART_COLOR_WITHOUT, values: result.schedule.map((row) => row.profitWithoutInvestor) },
               ]}
             />
 

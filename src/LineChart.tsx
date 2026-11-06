@@ -15,8 +15,21 @@ function niceMax(value: number): number {
   return niceFraction * base
 }
 
-const MARGIN = { top: 16, right: 16, bottom: 28, left: 92 }
-const WIDTH = 760
+// Опускает нижнюю границу шкалы до ближайшего «круглого» числа не выше
+// минимума данных — симметрично niceMax, которая поднимает верхнюю границу.
+function niceMin(value: number): number {
+  if (value <= 0) return 0
+  const exponent = Math.floor(Math.log10(value))
+  const base = Math.pow(10, exponent)
+  const fraction = value / base
+  const niceFraction = fraction >= 5 ? 5 : fraction >= 2 ? 2 : 1
+  return niceFraction * base
+}
+
+// MARGIN.right резервирует место под подпись значения в конце линии
+// ("60 683 366 у.е.") — без запаса текст обрезался краем SVG.
+const MARGIN = { top: 16, right: 100, bottom: 28, left: 92 }
+const WIDTH = 840
 const HEIGHT = 340
 const PLOT_WIDTH = WIDTH - MARGIN.left - MARGIN.right
 const PLOT_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom
@@ -33,10 +46,13 @@ export function LineChart({
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
-  const maxValue = niceMax(Math.max(1, ...series.flatMap((item) => item.values)))
+  const allValues = series.flatMap((item) => item.values)
+  const maxValue = niceMax(Math.max(1, ...allValues))
+  const minValue = Math.min(niceMin(Math.min(...allValues)), maxValue)
+  const valueSpan = Math.max(1, maxValue - minValue)
   const stepX = years.length > 1 ? PLOT_WIDTH / (years.length - 1) : 0
   const xAt = (index: number) => MARGIN.left + stepX * index
-  const yAt = (value: number) => MARGIN.top + PLOT_HEIGHT - (value / maxValue) * PLOT_HEIGHT
+  const yAt = (value: number) => MARGIN.top + PLOT_HEIGHT - ((value - minValue) / valueSpan) * PLOT_HEIGHT
 
   const gridLines = [0, 0.25, 0.5, 0.75, 1]
 
@@ -81,7 +97,7 @@ export function LineChart({
             <g key={fraction}>
               <line className="chart-grid" x1={MARGIN.left} x2={WIDTH - MARGIN.right} y1={y} y2={y} />
               <text className="chart-axis-label" x={MARGIN.left - 10} y={y} textAnchor="end" dominantBaseline="middle">
-                {valueFormatter(maxValue * fraction)}
+                {valueFormatter(minValue + valueSpan * fraction)}
               </text>
             </g>
           )
@@ -112,7 +128,7 @@ export function LineChart({
               <circle cx={xAt(lastIndex)} cy={yAt(item.values[lastIndex])} r={5} fill={item.color} style={{ stroke: 'var(--paper)', strokeWidth: 2 }} />
               <text
                 className="chart-end-label"
-                x={Math.min(WIDTH - MARGIN.right, xAt(lastIndex) + 8)}
+                x={xAt(lastIndex) + 8}
                 y={yAt(item.values[lastIndex])}
                 dominantBaseline="middle"
               >
