@@ -113,6 +113,10 @@ td { padding: 19px 18px 19px 0; border-bottom: 1px solid var(--soft-line); white
 .audit-note { grid-column: 1 / -1; min-height: auto; background: #eef1ef; }
 .audit-note svg { flex: none; color: var(--muted); }
 .audit-grid p { margin: 0; max-width: 58ch; font-size: 15px; line-height: 1.6; text-wrap: pretty; }
+.audit-note p + .recommendation-list { margin-top: 12px; }
+.recommendation-list { margin: 0; padding-left: 20px; max-width: 58ch; font-size: 15px; line-height: 1.6; }
+.recommendation-list li + li { margin-top: 8px; }
+.legal-note { max-width: 70ch; margin: 28px 0 0; padding-top: 20px; border-top: 1px solid var(--soft-line); color: var(--muted); font-size: 13px; line-height: 1.6; }
 .method-toggle { padding: 8px 0; font-size: 14px; }
 .method { max-width: 800px; margin-top: 20px; padding-top: 8px; color: #3f4945; }
 .method p { margin: 0 0 10px; line-height: 1.55; }
