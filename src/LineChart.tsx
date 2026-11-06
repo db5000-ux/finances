@@ -26,6 +26,18 @@ function niceMin(value: number): number {
   return rounded < value ? rounded : Math.max(0, rounded - step)
 }
 
+// Подбирает «круглый» шаг сетки (1/2/5/10 на нужном порядке — например
+// 1000, 2000, 5000, 10000, 20000...) под масштаб диапазона, чтобы линии
+// сетки попадали на читаемые числа, а не на случайные доли диапазона.
+function niceStep(roughStep: number): number {
+  if (roughStep <= 0) return 1
+  const exponent = Math.floor(Math.log10(roughStep))
+  const base = Math.pow(10, exponent)
+  const fraction = roughStep / base
+  const niceFraction = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10
+  return niceFraction * base
+}
+
 // MARGIN.right резервирует место под подпись значения в конце линии
 // ("60 683 366 у.е.") — без запаса текст обрезался краем SVG.
 const MARGIN = { top: 16, right: 100, bottom: 28, left: 92 }
@@ -54,7 +66,15 @@ export function LineChart({
   const xAt = (index: number) => MARGIN.left + stepX * index
   const yAt = (value: number) => MARGIN.top + PLOT_HEIGHT - ((value - minValue) / valueSpan) * PLOT_HEIGHT
 
-  const gridLines = [0, 0.25, 0.5, 0.75, 1]
+  // Круглые промежуточные линии сетки отбрасываются, если они попадают
+  // слишком близко к границе шкалы — иначе их подписи наезжают друг на друга.
+  const gridStep = niceStep(valueSpan / 4)
+  const edgeGap = gridStep * 0.3
+  const gridValues: number[] = [minValue]
+  for (let tick = Math.ceil(minValue / gridStep) * gridStep; tick < maxValue - edgeGap; tick += gridStep) {
+    if (tick > minValue + edgeGap) gridValues.push(tick)
+  }
+  gridValues.push(maxValue)
 
   const updateHover = (clientX: number, clientY: number) => {
     const svg = svgRef.current
@@ -91,13 +111,24 @@ export function LineChart({
         onMouseMove={(event) => updateHover(event.clientX, event.clientY)}
         onMouseLeave={() => setHoverIndex(null)}
       >
-        {gridLines.map((fraction) => {
-          const y = MARGIN.top + PLOT_HEIGHT - fraction * PLOT_HEIGHT
+        {years.map((year, index) => (
+          <line
+            key={`v-${year}`}
+            className="chart-grid"
+            x1={xAt(index)}
+            x2={xAt(index)}
+            y1={MARGIN.top}
+            y2={MARGIN.top + PLOT_HEIGHT}
+          />
+        ))}
+
+        {gridValues.map((value) => {
+          const y = yAt(value)
           return (
-            <g key={fraction}>
+            <g key={value}>
               <line className="chart-grid" x1={MARGIN.left} x2={WIDTH - MARGIN.right} y1={y} y2={y} />
               <text className="chart-axis-label" x={MARGIN.left - 10} y={y} textAnchor="end" dominantBaseline="middle">
-                {valueFormatter(minValue + valueSpan * fraction)}
+                {valueFormatter(value)}
               </text>
             </g>
           )
