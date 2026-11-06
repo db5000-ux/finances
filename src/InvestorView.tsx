@@ -154,6 +154,7 @@ export function InvestorView() {
               <p className="result-label">Резерв догоняет долю инвестора через</p>
               <p className="result-number" style={{ fontSize: 'clamp(28px, 3.4vw, 42px)' }}>{horizonLabel(result.buyoutYear, input.maxYears)}</p>
               <p className="scenario-note">Всего дивидендов за {result.schedule.length} {pluralYears(result.schedule.length)}: {formatMoney(result.totalDividendsPaid)}</p>
+              <p className="scenario-note"><strong>Доля инвестора к концу горизонта: {formatMoney(lastYear?.investorStakeValue ?? 0)}</strong></p>
             </div>
             <div className="scenario-card highlight">
               <h3>Картина 2 · Без инвестора, своими силами</h3>
